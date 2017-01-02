@@ -1,0 +1,25 @@
+{
+  "name": "vue-single-file-component-compiler",
+  "version": "0.1.0",
+  "description": "Just-in-time compilation for single file vue components",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/obsidience/vue-single-file-component-compiler.git"
+  },
+  "keywords": [
+    "vue",
+    "component",
+    "template",
+    "compiler"
+  ],
+  "author": "Gabe Anguiano",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/obsidience/vue-single-file-component-compiler/issues"
+  },
+  "homepage": "https://github.com/obsidience/vue-single-file-component-compiler#readme"
+}
