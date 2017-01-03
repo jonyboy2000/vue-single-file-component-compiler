@@ -14,12 +14,22 @@
     "vue",
     "component",
     "template",
-    "compiler"
+    "compiler",
+    "electron"
   ],
   "author": "Gabe Anguiano",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/obsidience/vue-single-file-component-compiler/issues"
   },
-  "homepage": "https://github.com/obsidience/vue-single-file-component-compiler#readme"
+  "homepage": "https://github.com/obsidience/vue-single-file-component-compiler#readme",
+  "dependencies": {
+    "css-loader": "^0.26.1",
+    "jsdom": "^9.9.1",
+    "vue-loader": "^10.0.2",
+    "vue-template-compiler": "^2.1.8"
+  },
+  "devDependencies": {
+    "jsdom": "^9.9.1"
+  }
 }
