@@ -9,4 +9,3 @@ module.exports = {
   };
 
 module.exports.template = "<p>{{ greeting }} World!</p>";
-

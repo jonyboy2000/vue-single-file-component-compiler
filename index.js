@@ -12,7 +12,7 @@ module.exports.compile = (options = {}) => {
             var destinationStats = fs.statSync(options.cachedFileName);
 
             if (sourceStats.mtime <= destinationStats.mtime) { // source is older than the cached destination - no recompile needed
-                return fs.readFileSync(options.cachedFileName, 'utf8');
+                return options.cachedFileName;
             }
         }
     }
@@ -28,14 +28,15 @@ module.exports.compile = (options = {}) => {
 
                 // styles
                 for (var i = 0; i < this.styles.length; i++) {
-                    returnValue += "require('insert-css')(" + JSON.stringify(this.styles[i].trim()) + ");\n\n";
+                    returnValue += "require('insert-css')(" + JSON.stringify(this.styles[i].trim()) + ");\n";
+                    if (i === this.styles.length - 1) { returnValue += "\n"; }
                 }
 
                 // script
                 returnValue += this.script.trim() + "\n\n";
 
                 // template
-                returnValue += "module.exports.template = " + JSON.stringify(this.template.trim()) + ";\n\n";
+                returnValue += "module.exports.template = " + JSON.stringify(this.template.trim()) + ";\n";
 
                 return returnValue;
             }
@@ -62,9 +63,14 @@ module.exports.compile = (options = {}) => {
     console.assert(vueObject.template.length > 0, "A template is required.");
     console.assert(vueObject.script.length > 0, "A script is required.");
 
-    if (options.enableCaching) {
-        fs.writeFileSync(options.cachedFileName, vueObject.rendered);
-    }
+    fs.writeFileSync(options.cachedFileName, vueObject.rendered);
 
-    return vueObject.rendered;
+    return options.cachedFileName;
+};
+
+module.exports.requireFromString = (src, filename) => {
+    var m = new module.constructor();
+    m.paths = module.paths;
+    m._compile(src, filename);
+    return m.exports;
 };

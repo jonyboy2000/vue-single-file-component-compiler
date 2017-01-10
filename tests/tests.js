@@ -10,5 +10,5 @@ const path = require('path'),
     var result = vsfcCompiler.compile({fileName: basicDotVueFile, enableCaching: true});
 
     // assert
-
+    
 })();
