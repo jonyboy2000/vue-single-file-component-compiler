@@ -1,5 +1,6 @@
 <template>
   <h2 class="red">{{msg}}</h2>
+  <style></style>
 </template>
 
 <script>

@@ -7,7 +7,7 @@ const path = require('path'),
     var basicDotVueFile = path.resolve('./fixtures/basic.vue');
 
     // act
-    var result = vsfcCompiler.compile(basicDotVueFile);
+    var result = vsfcCompiler.compile({fileName: basicDotVueFile, enableCaching: true});
 
     // assert
 
