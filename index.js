@@ -10,7 +10,10 @@ module.exports.compile = (options = {}) => {
         if (fs.existsSync(options.cachedFileName)) {
             var sourceStats = fs.statSync(options.fileName);
             var destinationStats = fs.statSync(options.cachedFileName);
-            vueScriptContent = fs.readFileSync(options.cachedFileName, 'utf8');
+
+            if (sourceStats.mtime <= destinationStats.mtime) { // source is older than the cached destination - no recompile needed
+                return fs.readFileSync(options.cachedFileName, 'utf8');
+            }
         }
     }
 
@@ -25,14 +28,14 @@ module.exports.compile = (options = {}) => {
 
                 // styles
                 for (var i = 0; i < this.styles.length; i++) {
-                    returnValue += "require('insert-css')(" + JSON.stringify(this.styles[i]) + ");\n";
+                    returnValue += "require('insert-css')(" + JSON.stringify(this.styles[i].trim()) + ");\n\n";
                 }
 
                 // script
-                returnValue += this.script + "\n";
+                returnValue += this.script.trim() + "\n\n";
 
                 // template
-                returnValue += "module.exports.template = " + JSON.stringify(this.template) + ";\n";
+                returnValue += "module.exports.template = " + JSON.stringify(this.template.trim()) + ";\n\n";
 
                 return returnValue;
             }
@@ -43,11 +46,11 @@ module.exports.compile = (options = {}) => {
         if (!(node.nodeName == "template" || node.nodeName == "script" || node.nodeName == "style")) { continue; }
         switch (node.nodeName) {
             case "template":
-                console.assert(vueObject.template.length === 0, "Only one template is allowed in a single file vue component.");
+                console.assert(vueObject.template.length === 0, "Each *.vue file can contain at most one <template> block at a time.");
                 vueObject.template = parse5.serialize(node.content);
                 break;
             case "script":
-                console.assert(vueObject.script.length === 0, "Only one script is allowed in a single file vue component.");
+                console.assert(vueObject.script.length === 0, "Each *.vue file can contain at most one <script> block at a time.");
                 vueObject.script = parse5.serialize(node);
                 break;
             case "style":
@@ -56,10 +59,12 @@ module.exports.compile = (options = {}) => {
         }
     }
 
-    console.assert(vueObject.template.length > 0, "A template is required");
-    console.assert(vueObject.script.length > 0, "A script is required");
+    console.assert(vueObject.template.length > 0, "A template is required.");
+    console.assert(vueObject.script.length > 0, "A script is required.");
 
-    if(options.enableCaching) {
+    if (options.enableCaching) {
         fs.writeFileSync(options.cachedFileName, vueObject.rendered);
     }
+
+    return vueObject.rendered;
 };

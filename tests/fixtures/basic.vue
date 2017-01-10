@@ -4,12 +4,13 @@
 
 <script>
   module.exports = {
-    data: function() {
+    data: function () {
       return {
         greeting: "Hello"
       };
     }
   };
+</script>
 
 <style scoped>
 p {

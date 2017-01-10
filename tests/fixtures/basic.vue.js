@@ -1,11 +1,12 @@
-require('insert-css')("\ncomp-a h2 {\n  color: #f00;\n}\n");
+require('insert-css')("p {\n  font-size: 2em;\n  text-align: center;\n}");
 
-export default {
-  data () {
-    return {
-      msg: 'Hello from Component A!'
+module.exports = {
+    data: function () {
+      return {
+        greeting: "Hello"
+      };
     }
-  }
-}
+  };
 
-module.exports.template = "\n  <h2 class=\"red\">{{msg}}</h2>\n  <style></style>\n";
+module.exports.template = "<p>{{ greeting }} World!</p>";
+

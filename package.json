@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/obsidience/vue-single-file-component-compiler#readme",
   "dependencies": {
+    "insert-css": "^2.0.0",
     "parse5": "^3.0.1"
   },
   "devDependencies": {
