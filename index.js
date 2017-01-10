@@ -4,15 +4,15 @@ const fs = require('fs'),
 module.exports.compile = (options = {}) => {
     console.assert(options.fileName, "options.fileName is required");
     options.enableCaching = options.enableCaching || true;
-    options.cachedFileName = options.fileName + ".js";
+    options.destinationFileName = options.fileName + ".js";
 
     if (options.enableCaching) {
-        if (fs.existsSync(options.cachedFileName)) {
+        if (fs.existsSync(options.destinationFileName)) {
             var sourceStats = fs.statSync(options.fileName);
-            var destinationStats = fs.statSync(options.cachedFileName);
+            var destinationStats = fs.statSync(options.destinationFileName);
 
             if (sourceStats.mtime <= destinationStats.mtime) { // source is older than the cached destination - no recompile needed
-                return options.cachedFileName;
+                return options.destinationFileName;
             }
         }
     }
@@ -63,7 +63,7 @@ module.exports.compile = (options = {}) => {
     console.assert(vueObject.template.length > 0, "A template is required.");
     console.assert(vueObject.script.length > 0, "A script is required.");
 
-    fs.writeFileSync(options.cachedFileName, vueObject.rendered);
+    fs.writeFileSync(options.destinationFileName, vueObject.rendered);
 
-    return options.cachedFileName;
+    return options.destinationFileName;
 };
