@@ -6,9 +6,8 @@ const fs = require("fs"),
 
 document = mockDocument.document;
 
-(function compileOfBasicDotVueReturnsAValidCommonJsFile() {
+(function compileOfBasicDotVue_ReturnsAValidCommonJsFile() {
     // arrange
-    document.clear();
     try { fs.unlinkSync(path.resolve("./fixtures/basic.vue.js")); }
     catch (err) { } // ignored
     var basicDotVueFile = path.resolve("./fixtures/basic.vue");
@@ -23,4 +22,19 @@ document = mockDocument.document;
     console.assert(typeof (loadedComponent.data) === "function");
     console.assert(loadedComponent.data().greeting === "Hello");
     console.assert(loadedComponent.template === "<p>{{ greeting }} World!</p>");
+})();
+
+(function compileOfBasicDotVue_WithCachingEnabledReturnsExistingCachedFile() {
+    // arrange
+    var expectedComponentFilename = path.resolve("./fixtures/basic.vue.js");
+    fs.writeFileSync(expectedComponentFilename, "passed");
+    var basicDotVueFile = path.resolve("./fixtures/basic.vue");
+
+    // act
+    var compiledComponentFilename = vsfcCompiler.compile({ fileName: basicDotVueFile, enableCaching: true });
+    var compiledComponentContent = fs.readFileSync(compiledComponentFilename, {encoding: "utf8"});
+
+    // assert
+    console.assert(expectedComponentFilename === compiledComponentFilename);
+    console.assert(compiledComponentContent === "passed");
 })();
