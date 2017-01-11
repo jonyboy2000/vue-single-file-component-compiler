@@ -1,14 +1,26 @@
-const path = require('path'),
-    jsdom = require('jsdom'),
-    vsfcCompiler = require('../index');
+const fs = require("fs"),
+    path = require("path"),
+    jsdom = require("jsdom"),
+    vsfcCompiler = require("../index"),
+    mockDocument = require("./mockDocument");
 
-(function compileOfBasicDotVueReturnsAScript() {
+document = mockDocument.document;
+
+(function compileOfBasicDotVueReturnsAValidCommonJsFile() {
     // arrange
-    var basicDotVueFile = path.resolve('./fixtures/basic.vue');
+    document.clear();
+    try { fs.unlinkSync(path.resolve("./fixtures/basic.vue.js")); }
+    catch (err) { } // ignored
+    var basicDotVueFile = path.resolve("./fixtures/basic.vue");
 
     // act
-    var result = vsfcCompiler.compile({fileName: basicDotVueFile, enableCaching: true});
+    var compiledComponentFilename = vsfcCompiler.compile({ fileName: basicDotVueFile, enableCaching: true });
+    var loadedComponent = require(compiledComponentFilename);
 
     // assert
-    
+    console.assert(compiledComponentFilename.match(/\.js$/)); // ends in .js
+    console.assert(fs.existsSync(compiledComponentFilename)); // file exists
+    console.assert(typeof (loadedComponent.data) === "function");
+    console.assert(loadedComponent.data().greeting === "Hello");
+    console.assert(loadedComponent.template === "<p>{{ greeting }} World!</p>");
 })();
