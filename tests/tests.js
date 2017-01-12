@@ -24,17 +24,33 @@ document = mockDocument.document;
     console.assert(loadedComponent.template === "<p>{{ greeting }} World!</p>");
 })();
 
-(function compileOfBasicDotVue_WithCachingEnabledReturnsExistingCachedFile() {
+(function compileOfBasicDotVue_WithCachingEnabledReturnsNewlyCachedFile() {
     // arrange
-    var expectedComponentFilename = path.resolve("./fixtures/basic.vue.js");
-    fs.writeFileSync(expectedComponentFilename, "passed");
     var basicDotVueFile = path.resolve("./fixtures/basic.vue");
+    var basicDocVueDotJsFile = basicDotVueFile + ".js";
+    fs.writeFileSync(basicDocVueDotJsFile, "passed"); // newly created cached file with the content "passed"
 
     // act
     var compiledComponentFilename = vsfcCompiler.compile({ fileName: basicDotVueFile, enableCaching: true });
-    var compiledComponentContent = fs.readFileSync(compiledComponentFilename, {encoding: "utf8"});
+    var compiledComponentContent = fs.readFileSync(compiledComponentFilename, { encoding: "utf8" });
 
     // assert
-    console.assert(expectedComponentFilename === compiledComponentFilename);
+    console.assert(basicDocVueDotJsFile === compiledComponentFilename);
     console.assert(compiledComponentContent === "passed");
+})();
+
+(function compileOfBasicDotVue_WithCachingEnabledReturnsFreshCopyIfCachedFileIsStale() {
+    // arrange
+    var earlierDate = new Date(2000, 1, 1);
+    var basicDotVueFile = path.resolve("./fixtures/basic.vue");
+    var basicDocVueDotJsFile = basicDotVueFile + ".js";
+    var fd = fs.openSync(basicDocVueDotJsFile, "w+");
+
+    // act
+    fs.futimesSync(fd, earlierDate, earlierDate);  // set the date of the .js file to date prior to basic.vue modified date
+    fs.closeSync(fd);
+    var compiledComponentFilename = vsfcCompiler.compile({ fileName: basicDotVueFile, enableCaching: true }); // compilation should see the .js as stale and recreate the file
+    
+    // assert
+    console.assert(fs.statSync(basicDocVueDotJsFile).mtime > earlierDate);
 })();
