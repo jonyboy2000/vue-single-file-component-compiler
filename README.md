@@ -39,7 +39,7 @@ var component = require(compiled);
 ```
 
 ## Notes
-1. Only supports native HTML, CSS, JS
+1. Only supports native HTML, CSS and JS.
 2. Caching support with enableCaching flag.  When set to true, the file will be cached to disk as <filename>.vue.js.  If the .vue file is updated with a newer modified date, the cache is invalidated and a new <filename>.vue.js is created.
 3. This project is intended for rapid development of Electron apps where a bundling step is unnecessary.
 4. Please report any bugs as a Github issue.  Feedback is appreciated!
