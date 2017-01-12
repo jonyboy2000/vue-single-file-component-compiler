@@ -1,7 +1,7 @@
 # vue-single-file-component-compiler
 Just-in-time compilation of single file Vue components for projects that don't require a bundler.  Useful for Electron apps and only supports plain old HTML, JS and CSS.
 
-## Example Single File Component (component.vue)
+## Example Single File Component
 
 ``` html
 // component.vue
