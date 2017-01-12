@@ -4,13 +4,7 @@ Just-in-time compilation of single file Vue components for projects that don't r
 ## Example Single File Component (component.vue)
 
 ``` html
-// app.vue
-<style scoped>
-  .red {
-    color: #f00;
-  }
-</style>
-
+// component.vue
 <template>
   <h1 class="red">{{msg}}</h1>
 </template>
@@ -24,6 +18,12 @@ Just-in-time compilation of single file Vue components for projects that don't r
     }
   }
 </script>
+
+<style scoped>
+  .red {
+    color: #f00;
+  }
+</style>
 ```
 
 ## Usage
@@ -34,7 +34,7 @@ npm install vue-single-file-component-compiler --save
 
 ``` js
 var vsfcCompiler = require('vue-single-file-component-compiler');
-var compiledComponent = vsfcCompiler.compile({fileName: path.resolve("basic.vue"), enableCaching: true});
+var compiledComponent = vsfcCompiler.compile({fileName: path.resolve("component.vue"), enableCaching: true});
 var loadedComponent = require(compiledComponent);
 ```
 
