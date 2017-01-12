@@ -34,8 +34,8 @@ npm install vue-single-file-component-compiler --save
 
 ``` js
 var vsfcCompiler = require('vue-single-file-component-compiler');
-var compiledComponent = vsfcCompiler.compile({fileName: path.resolve("component.vue"), enableCaching: true});
-var loadedComponent = require(compiledComponent);
+var compiled = vsfcCompiler.compile({fileName: path.resolve("component.vue"), enableCaching: true});
+var component = require(compiled);
 ```
 
 ## Notes
