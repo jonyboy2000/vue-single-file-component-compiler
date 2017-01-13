@@ -2,82 +2,100 @@ const fs = require("fs"),
     parse5 = require("parse5"),
     shortid = require("shortid");
 
-module.exports.compile = (options = {}) => {
-    console.assert(options.fileName, "options.fileName is required");
-    options.enableCaching = options.enableCaching || true;
-    options.destinationFileName = options.fileName + ".js";
+module.exports = class VueCompiler {
+    constructor(options) {
+        console.assert(options.fileName, "options.fileName is required");
 
-    if (options.enableCaching) {
-        if (fs.existsSync(options.destinationFileName)) {
-            var sourceStats = fs.statSync(options.fileName);
-            var destinationStats = fs.statSync(options.destinationFileName);
-
-            if (sourceStats.mtime <= destinationStats.mtime) { // source is older than the cached destination - no recompile needed
-                return options.destinationFileName;
-            }
-        }
+        this._fileName = options.fileName;
+        this._vueContent = fs.readFileSync(this._fileName, 'utf8')
+        this._enableCaching = options.enableCaching || true;
+        this._compiledFileName = options.fileName + ".js";
+        this._template = { identifier: "", nodeContent: {} };
+        this._script = "";
+        this._styles = [];
+        this._templateIdentifier = "_v-" + shortid.generate();
+        this._templateNode = null;
+        this._scriptNode = null;
+        this._styleNodes = [];
     }
 
-    var vueContent = fs.readFileSync(options.fileName, 'utf8'),
-        rootFragments = parse5.parseFragment(vueContent),
-        vueObject = {
-            template: {identifier: "", value: ""},
-            script: "",
-            styles: [],
-            get rendered() {
-                var returnValue = "";
-
-                // styles
-                for (var i = 0; i < this.styles.length; i++) {
-                    if(i === 0) { returnValue += "var insertCss = require('insert-css');\n"; }
-
-                    returnValue += "insertCss(" + JSON.stringify(this.styles[i].value.trim()) + ", {container: " + (this.styles[i].isScoped ? "document.querySelector('[" + this.template.identifier + "]')": "")  + "});\n";
-                    
-                    if (i === this.styles.length - 1) { returnValue += "\n"; }
-                }
-
-                // script
-                returnValue += this.script.trim() + "\n\n";
-
-                // template
-                returnValue += "module.exports.template = " + JSON.stringify(this.template.value.trim()) + ";\n";
-
-                return returnValue;
-            }
-        };
-
-    for (var i = 0; i < rootFragments.childNodes.length; i++) {
-        var node = rootFragments.childNodes[i];
-        if (!(node.nodeName == "template" || node.nodeName == "script" || node.nodeName == "style")) { continue; }
-        switch (node.nodeName) {
-            case "template":
-                console.assert(vueObject.template.value.length === 0, "Each *.vue file can contain at most one <template> block at a time.");
-                var nodeIdentifier = "_v-" + shortid.generate();
-
-                var firstChild = node.content.childNodes.find((element) => {return element.nodeName !== "#text";});
-                console.assert(firstChild !== null, "Template appears to be empty.");
-                firstChild.attrs.push({name: nodeIdentifier, value: ""});
-
-                vueObject.template = {
-                    identifier: nodeIdentifier,
-                    value: parse5.serialize(node.content)
-                };
-                break;
-            case "script":
-                console.assert(vueObject.script.length === 0, "Each *.vue file can contain at most one <script> block at a time.");
-                vueObject.script = parse5.serialize(node);
-                break;
-            case "style":
-                var isScoped = node.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
-                vueObject.styles.push({isScoped: isScoped, value: parse5.serialize(node)});
-                break;
+    compile() {
+        if (this._enableCaching) {
+            if (this.isVueCachedAndFresh()) { return this._compiledFileName; }
         }
+
+        this.parse();
+
+        var compiled = "",
+            hasScopedStyle = false;
+
+        // styles
+        for (var i = 0; i < this._styleNodes.length; i++) {
+            var styleNode = this._styleNodes[i];
+            if (i === 0) { compiled += "var insertCss = require('insert-css');\n"; }
+
+            var isScoped = styleNode.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
+            if (isScoped) { this.hasScopedStyle = true; }
+            compiled += "insertCss(" + JSON.stringify(parse5.serialize(styleNode).trim()) + (isScoped ? ", {container: document.querySelector('[" + this._templateIdentifier + "]')}" : "") + ");\n";
+
+            if (i === this._styleNodes.length - 1) { compiled += "\n"; }
+        }
+
+        // script
+        compiled += parse5.serialize(this._scriptNode).trim() + "\n\n";
+
+        // template
+        if (this.hasScopedStyle) {
+            var firstChild = this._templateNode.content.childNodes.find((element) => { return element.nodeName !== "#text"; });
+            firstChild.attrs.push({ name: this._templateIdentifier }); // , value: ""
+        }
+
+        var templateHTML = parse5.serialize(this._templateNode.content).trim();
+        compiled += "module.exports.template = " + JSON.stringify(templateHTML) + ";\n";
+
+        fs.writeFileSync(this._compiledFileName, compiled);
+
+        return this._compiledFileName;
     }
 
-    console.assert(vueObject.template.value.length > 0, "A template is required.");
-    console.assert(vueObject.script.length > 0, "A script is required.");
+    parse() {
+        var vueContent = fs.readFileSync(this._fileName, 'utf8');
+        var vueParsed = parse5.parseFragment(vueContent);
 
-    fs.writeFileSync(options.destinationFileName, vueObject.rendered);
+        for (var i = 0; i < vueParsed.childNodes.length; i++) {
+            var node = vueParsed.childNodes[i];
 
-    return options.destinationFileName;
+            switch (node.nodeName) {
+                case "template":
+                    console.assert(this._templateNode === null, "Each *.vue file can contain at most one <template> block at a time.");
+                    this._templateNode = node;
+                    console.assert(this._templateNode.content.childNodes.find((element) => { return element.nodeName !== "#text"; }) !== null, "A template with content is required.");
+                    break;
+                case "script":
+                    console.assert(this._scriptNode === null, "Each *.vue file can contain at most one <script> block at a time.");
+                    this._scriptNode = node;
+                    break;
+                case "style":
+                    this._styleNodes.push(node);
+                    break;
+                default:
+                    continue;
+            }
+        }
+
+        console.assert(this._scriptNode !== null, "A script is required.");
+    }
+
+    isVueCachedAndFresh() {
+        if (fs.existsSync(this._compiledFileName)) {
+            var vueStats = fs.statSync(this._fileName);
+            var cachedStats = fs.statSync(this._compiledFileName);
+
+            if (vueStats.mtime <= cachedStats.mtime) { // source is older than the cached destination - no recompile needed
+                return true;
+            }
+        }
+
+        return false;
+    }
 };
