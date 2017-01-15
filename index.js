@@ -7,8 +7,8 @@ module.exports = class VueCompiler {
         console.assert(options.fileName, "options.fileName is required");
 
         this._fileName = options.fileName;
-        this._vueContent = fs.readFileSync(this._fileName, 'utf8')
-        this._enableCaching = options.enableCaching || true;
+        this._vueContent = fs.readFileSync(this._fileName, 'utf8');
+        this._enableCaching = options.enableCaching === true;
         this._compiledFileName = options.fileName + ".js";
         this._template = { identifier: "", nodeContent: {} };
         this._script = "";
@@ -29,29 +29,35 @@ module.exports = class VueCompiler {
         var compiled = "",
             hasScopedStyle = false;
 
-        // styles
-        for (var i = 0; i < this._styleNodes.length; i++) {
-            var styleNode = this._styleNodes[i];
-            if (i === 0) { compiled += "var insertCss = require('insert-css');\n"; }
-
-            var isScoped = styleNode.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
-            if (isScoped) { this.hasScopedStyle = true; }
-            compiled += "insertCss(" + JSON.stringify(parse5.serialize(styleNode).trim()) + (isScoped ? ", {container: document.querySelector('[" + this._templateIdentifier + "]')}" : "") + ");\n";
-
-            if (i === this._styleNodes.length - 1) { compiled += "\n"; }
-        }
-
         // script
         compiled += parse5.serialize(this._scriptNode).trim() + "\n\n";
 
         // template
-        if (this.hasScopedStyle) {
+        if (this._hasScopedStyle) {
             var firstChild = this._templateNode.content.childNodes.find((element) => { return element.nodeName !== "#text"; });
-            firstChild.attrs.push({ name: this._templateIdentifier }); // , value: ""
+            firstChild.attrs.push({ name: this._templateIdentifier, value: "" });
         }
 
         var templateHTML = parse5.serialize(this._templateNode.content).trim();
-        compiled += "module.exports.template = " + JSON.stringify(templateHTML) + ";\n";
+        compiled += "module.exports.template = " + JSON.stringify(templateHTML) + ";\n\n";
+
+        // styles
+        for (var i = 0; i < this._styleNodes.length; i++) {
+            var styleNode = this._styleNodes[i];
+            if (i === 0) { 
+                compiled += "var insertCss = require('insert-css');\n" +
+                    "var originalOnExports = typeof(module.exports.mounted) === \"function\" ? module.exports.mounted : () => {};\n" +
+                    "module.exports.mounted = () => {\n";
+            }
+
+            var isScoped = styleNode.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
+            compiled += "\tinsertCss(" + JSON.stringify(parse5.serialize(styleNode).trim()) + (isScoped ? ", {container: document.querySelector('[" + this._templateIdentifier + "]')}" : "") + ");\n";
+
+            if (i === this._styleNodes.length - 1) {                 
+                compiled += "\toriginalOnExports();\n" + 
+                    "};\n";
+            }
+        }
 
         fs.writeFileSync(this._compiledFileName, compiled);
 
@@ -76,6 +82,10 @@ module.exports = class VueCompiler {
                     this._scriptNode = node;
                     break;
                 case "style":
+                    if (!this._hasScopedStyle) {
+                        this._hasScopedStyle = node.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
+                    }
+
                     this._styleNodes.push(node);
                     break;
                 default:

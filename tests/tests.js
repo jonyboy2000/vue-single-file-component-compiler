@@ -1,7 +1,7 @@
 const fs = require("fs"),
     path = require("path"),
     jsdom = require("jsdom"),
-    VueSingleFileComponentCompiler = require("../index"),
+    vueSingleFileComponentCompiler = require("../index"),
     mockDocument = require("./mockDocument");
 
 document = mockDocument.document;
@@ -13,7 +13,7 @@ document = mockDocument.document;
     var basicDotVueFile = path.resolve("./fixtures/basic.vue");
 
     // act
-    var compiledComponentFilename = (new VueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
+    var compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
     var loadedComponent = require(compiledComponentFilename);
 
     // assert
@@ -31,7 +31,7 @@ document = mockDocument.document;
     fs.writeFileSync(basicDocVueDotJsFile, "passed"); // newly created cached file with the content "passed"
 
     // act
-    var compiledComponentFilename = (new VueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
+    var compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
     var compiledComponentContent = fs.readFileSync(compiledComponentFilename, { encoding: "utf8" });
 
     // assert
@@ -49,7 +49,7 @@ document = mockDocument.document;
     // act
     fs.futimesSync(fd, earlierDate, earlierDate);  // set the date of the .js file to date prior to basic.vue modified date
     fs.closeSync(fd);
-    var compiledComponentFilename = (new VueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile(); // compilation should see the .js as stale and recreate the file
+    var compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile(); // compilation should see the .js as stale and recreate the file
     
     // assert
     console.assert(fs.statSync(basicDocVueDotJsFile).mtime > earlierDate);
