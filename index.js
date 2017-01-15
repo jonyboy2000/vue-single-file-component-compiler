@@ -1,6 +1,7 @@
 const fs = require("fs"),
     parse5 = require("parse5"),
-    shortid = require("shortid");
+    shortid = require("shortid"),
+    css = require("css");
 
 module.exports = class VueCompiler {
     constructor(options) {
@@ -26,7 +27,7 @@ module.exports = class VueCompiler {
 
         this.parse();
 
-        var compiled = "",
+        let compiled = "",
             hasScopedStyle = false;
 
         // script
@@ -34,27 +35,35 @@ module.exports = class VueCompiler {
 
         // template
         if (this._hasScopedStyle) {
-            var firstChild = this._templateNode.content.childNodes.find((element) => { return element.nodeName !== "#text"; });
-            firstChild.attrs.push({ name: this._templateIdentifier, value: "" });
+            this._templateRoot.attrs.push({ name: this._templateIdentifier, value: "" });
         }
 
-        var templateHTML = parse5.serialize(this._templateNode.content).trim();
+        let templateHTML = parse5.serialize(this._templateNode.content).trim();
         compiled += "module.exports.template = " + JSON.stringify(templateHTML) + ";\n\n";
 
         // styles
-        for (var i = 0; i < this._styleNodes.length; i++) {
-            var styleNode = this._styleNodes[i];
-            if (i === 0) { 
+        for (let i = 0; i < this._styleNodes.length; i++) {
+            let styleNode = this._styleNodes[i];
+            if (i === 0) {
                 compiled += "var insertCss = require('insert-css');\n" +
                     "var originalOnExports = typeof(module.exports.mounted) === \"function\" ? module.exports.mounted : () => {};\n" +
                     "module.exports.mounted = () => {\n";
             }
 
-            var isScoped = styleNode.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
-            compiled += "\tinsertCss(" + JSON.stringify(parse5.serialize(styleNode).trim()) + (isScoped ? ", {container: document.querySelector('[" + this._templateIdentifier + "]')}" : "") + ");\n";
+            let isScoped = styleNode.attrs.some((currentValue, index, array) => { return currentValue.name === "scoped"; });
 
-            if (i === this._styleNodes.length - 1) {                 
-                compiled += "\toriginalOnExports();\n" + 
+            if (isScoped) {
+                let ast = css.parse(parse5.serialize(styleNode).trim());
+                ast.stylesheet.rules = this.getRulesAsScoped(ast.stylesheet.rules, this._templateRoot, this._templateIdentifier);
+                let scopedCss = css.stringify(ast);
+                compiled += "\tinsertCss(" + JSON.stringify(scopedCss) + ", {container: document.querySelector('[" + this._templateIdentifier + "]')});\n";
+            }
+            else {
+                compiled += "\tinsertCss(" + JSON.stringify(parse5.serialize(styleNode).trim()) + ");\n";
+            }
+
+            if (i === this._styleNodes.length - 1) {
+                compiled += "\toriginalOnExports();\n" +
                     "};\n";
             }
         }
@@ -65,16 +74,17 @@ module.exports = class VueCompiler {
     }
 
     parse() {
-        var vueContent = fs.readFileSync(this._fileName, 'utf8');
-        var vueParsed = parse5.parseFragment(vueContent);
+        let vueContent = fs.readFileSync(this._fileName, 'utf8');
+        let vueParsed = parse5.parseFragment(vueContent);
 
-        for (var i = 0; i < vueParsed.childNodes.length; i++) {
-            var node = vueParsed.childNodes[i];
+        for (let i = 0; i < vueParsed.childNodes.length; i++) {
+            let node = vueParsed.childNodes[i];
 
             switch (node.nodeName) {
                 case "template":
                     console.assert(this._templateNode === null, "Each *.vue file can contain at most one <template> block at a time.");
                     this._templateNode = node;
+                    this._templateRoot = node.content.childNodes.find((element) => { return element.nodeName !== "#text"; });
                     console.assert(this._templateNode.content.childNodes.find((element) => { return element.nodeName !== "#text"; }) !== null, "A template with content is required.");
                     break;
                 case "script":
@@ -96,10 +106,35 @@ module.exports = class VueCompiler {
         console.assert(this._scriptNode !== null, "A script is required.");
     }
 
+    getRulesAsScoped(rules, root, rootIdentifier) {
+        for (let i = 0; i < rules.length; i++) {
+            if (rules[i].type === "media") { scopedCss += this.getScopedCss(rules[i].rules, root, rootIdentifier); }
+
+            for (let j = 0; j < rules[i].selectors.length; j++) {
+                let shouldBeModified = new RegExp("^" + root.nodeName + "[:|\s|\..|\[]?.*$", "ig");
+
+                if (rules[i].selectors[j].match(shouldBeModified)) {
+                    let alreadyHasAttributeSelector = new RegExp("^" + root.nodeName + "\\[", "ig");
+
+                    if (!rules[i].selectors[j].match(alreadyHasAttributeSelector)) {
+                        let re = new RegExp("^" + root.nodeName + "(.*$)", "ig");
+                        rules[i].selectors[j] = rules[i].selectors[j].replace(re, root.nodeName + "[" + rootIdentifier + "]" + "$1");
+                    }
+                    else {
+                        let re = new RegExp("^" + root.nodeName + "\\[([^\]]+)\\](.*$)", "ig");
+                        rules[i].selectors[j] = rules[i].selectors[j].replace(re, root.nodeName + "[$1, " + rootIdentifier + "]$2");
+                    }
+                }
+            }
+        }
+
+        return rules;
+    }
+
     isVueCachedAndFresh() {
         if (fs.existsSync(this._compiledFileName)) {
-            var vueStats = fs.statSync(this._fileName);
-            var cachedStats = fs.statSync(this._compiledFileName);
+            let vueStats = fs.statSync(this._fileName);
+            let cachedStats = fs.statSync(this._compiledFileName);
 
             if (vueStats.mtime <= cachedStats.mtime) { // source is older than the cached destination - no recompile needed
                 return true;

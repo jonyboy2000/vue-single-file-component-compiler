@@ -6,51 +6,75 @@ const fs = require("fs"),
 
 document = mockDocument.document;
 
-(function compileOfBasicDotVue_ReturnsAValidCommonJsFile() {
+function compileOfBasicDotVue_ReturnsAValidCommonJsFile() {
     // arrange
-    try { fs.unlinkSync(path.resolve("./fixtures/basic.vue.js")); }
+    try { fs.unlinkSync(path.resolve("./cases/basic.vue.js")); }
     catch (err) { } // ignored
-    var basicDotVueFile = path.resolve("./fixtures/basic.vue");
+    let basicDotVueFile = path.resolve("./cases/basic.vue");
 
     // act
-    var compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
-    var loadedComponent = require(compiledComponentFilename);
+    let compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
+    let loadedComponent = require(compiledComponentFilename);
 
     // assert
-    console.assert(compiledComponentFilename.match(/\.js$/)); // ends in .js
-    console.assert(fs.existsSync(compiledComponentFilename)); // file exists
-    console.assert(typeof (loadedComponent.data) === "function");
-    console.assert(loadedComponent.data().greeting === "Hello");
-    console.assert(loadedComponent.template === "<p>{{ greeting }} World!</p>");
-})();
+    console.assert(compiledComponentFilename.match(/\.js$/), "compiledComponentFilename should end in .js");
+    console.assert(fs.existsSync(compiledComponentFilename), "compiledComponentFilename should exist");
+    console.assert(typeof (loadedComponent.data) === "function", "loadedComponent should be a function");
+    console.assert(loadedComponent.data().greeting === "Hello", "Component greeting should be hello");
+    console.assert(loadedComponent.template === "<p>{{ greeting }} World!</p>", "Template does not match expected");
+}
 
-(function compileOfBasicDotVue_WithCachingEnabledReturnsNewlyCachedFile() {
+function compileOfBasicDotVue_WithCachingEnabledReturnsNewlyCachedFile() {
     // arrange
-    var basicDotVueFile = path.resolve("./fixtures/basic.vue");
-    var basicDocVueDotJsFile = basicDotVueFile + ".js";
+    let basicDotVueFile = path.resolve("./cases/basic.vue");
+    let basicDocVueDotJsFile = basicDotVueFile + ".js";
     fs.writeFileSync(basicDocVueDotJsFile, "passed"); // newly created cached file with the content "passed"
 
     // act
-    var compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
-    var compiledComponentContent = fs.readFileSync(compiledComponentFilename, { encoding: "utf8" });
+    let compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile();
+    let compiledComponentContent = fs.readFileSync(compiledComponentFilename, { encoding: "utf8" });
 
     // assert
-    console.assert(basicDocVueDotJsFile === compiledComponentFilename);
-    console.assert(compiledComponentContent === "passed");
-})();
+    console.assert(basicDocVueDotJsFile === compiledComponentFilename, "Compiled component filename incorrect");
+    console.assert(compiledComponentContent === "passed", "The content of compiled should be \"passed\"");
+}
 
-(function compileOfBasicDotVue_WithCachingEnabledReturnsFreshCopyIfCachedFileIsStale() {
+function compileOfBasicDotVue_WithCachingEnabledReturnsFreshCopyIfCachedFileIsStale() {
     // arrange
-    var earlierDate = new Date(2000, 1, 1);
-    var basicDotVueFile = path.resolve("./fixtures/basic.vue");
-    var basicDocVueDotJsFile = basicDotVueFile + ".js";
-    var fd = fs.openSync(basicDocVueDotJsFile, "w+");
+    let earlierDate = new Date(2000, 1, 1);
+    let basicDotVueFile = path.resolve("./cases/basic.vue");
+    let basicDocVueDotJsFile = basicDotVueFile + ".js";
+    let fd = fs.openSync(basicDocVueDotJsFile, "w+");
 
     // act
     fs.futimesSync(fd, earlierDate, earlierDate);  // set the date of the .js file to date prior to basic.vue modified date
     fs.closeSync(fd);
-    var compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile(); // compilation should see the .js as stale and recreate the file
+    let compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: basicDotVueFile, enableCaching: true })).compile(); // compilation should see the .js as stale and recreate the file
     
     // assert
-    console.assert(fs.statSync(basicDocVueDotJsFile).mtime > earlierDate);
-})();
+    console.assert(fs.statSync(basicDocVueDotJsFile).mtime > earlierDate, "Compile did not create new " + basicDocVueDotJsFile);
+}
+
+function compileOfScopedDotVue_CreatesAndScopesToIdentifier() {
+    // arrange
+    let scopedDotVueFile = path.resolve("./cases/scoped.vue");
+    let basicDocVueDotJsFile = scopedDotVueFile + ".js";
+
+    // act
+    let compiledComponentFilename = (new vueSingleFileComponentCompiler({ fileName: scopedDotVueFile, enableCaching: false })).compile();
+    let loadedComponent = require(compiledComponentFilename);
+    
+    // assert
+    let identifier = loadedComponent.template.replace(/<p (_v-[^=]+).*/ig, "$1");
+    console.assert(identifier.length > 0, "The template should contain an identifier");
+    console.assert(typeof(loadedComponent.mounted) === "function", "Mounted function missing");
+    let mountedFunction = String(loadedComponent.mounted);
+    console.assert(mountedFunction.indexOf("p[" + identifier +"]") > -1, "mountedFunction should have scoped css selector"); // has scoped css selector
+    console.assert(mountedFunction.indexOf(", {container: document.querySelector('[" + identifier + "]')}") > -1, "InsertCSS options for container incorrect or missing");
+
+}
+
+compileOfBasicDotVue_ReturnsAValidCommonJsFile();
+compileOfBasicDotVue_WithCachingEnabledReturnsNewlyCachedFile();
+compileOfBasicDotVue_WithCachingEnabledReturnsFreshCopyIfCachedFileIsStale();
+compileOfScopedDotVue_CreatesAndScopesToIdentifier();
