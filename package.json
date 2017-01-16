@@ -1,6 +1,6 @@
 {
   "name": "vue-single-file-component-compiler",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Just-in-time compilation for single file vue components",
   "main": "index.js",
   "scripts": {
