@@ -1,5 +1,6 @@
 // Place your settings in this file to overwrite default and user settings.
 {
+    "editor.fontSize": 12,
     "jshint.config": ".vscode/jshint.json",
     "editor.autoClosingBrackets": false
 }

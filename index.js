@@ -109,6 +109,7 @@ module.exports = class VueCompiler {
     getRulesAsScoped(rules, root, rootIdentifier) {
         for (let i = 0; i < rules.length; i++) {
             if (rules[i].type === "media") { scopedCss += this.getScopedCss(rules[i].rules, root, rootIdentifier); }
+            if (!rules[i].selectors) { continue; }
 
             for (let j = 0; j < rules[i].selectors.length; j++) {
                 let shouldBeModified = new RegExp("^" + root.nodeName + "[:|\s|\..|\[]?.*$", "ig");
